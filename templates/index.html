@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Recipe Finder</h1>
+        <div class="search">
+            <input type="text" id="meal_name" placeholder="Enter meal name" />
+            <button id="search_button">Search</button>
+            <button id="random_button">Random Meal</button>
+        </div>
+        <div id="result" class="result-container"></div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#search_button').click(function() {
+                const mealName = $('#meal_name').val();
+                $.post('/search', { meal_name: mealName }, function(data) {
+                    displayMeal(data);
+                });
+            });
+
+            $('#random_button').click(function() {
+                $.get('/random', function(data) {
+                    displayMeal(data);
+                });
+            });
+
+            function displayMeal(data) {
+                const meal = data.meals ? data.meals[0] : null;
+                let html = '';
+                if (meal) {
+                    html += `<div class="meal-card">`;
+                    html += `<h2>${meal.strMeal}</h2>`;
+                    html += `<img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="meal-image">`;
+                    html += `<div class="meal-details">`;
+                    html += `<h3>Instructions:</h3><p>${meal.strInstructions}</p>`;
+                    html += `<h3>Ingredients:</h3><ul class="ingredients-list">`;
+                    for (let i = 1; i <= 20; i++) {
+                        const ingredient = meal[`strIngredient${i}`];
+                        const measure = meal[`strMeasure${i}`];
+                        if (ingredient && ingredient.trim() !== "") { // Check if ingredient is not empty
+                            html += `<li>${ingredient} (${measure})</li>`;
+                        }
+                    }
+                    html += `</ul></div></div>`;
+                } else {
+                    html = '<p class="no-meal">No meal found.</p>';
+                }
+                $('#result').html(html);
+            }
+        });
+    </script>
+</body>
+</html>
