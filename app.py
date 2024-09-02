@@ -11,8 +11,30 @@ def index():
 
 @app.route('/search', methods=['POST'])
 def search():
-    meal_name = request.form['meal_name']
-    response = requests.get(f"{BASE_URL}search.php?s={meal_name}")
+    query = request.form['meal_name']
+    # First, filter by ingredient
+    response = requests.get(f"{BASE_URL}filter.php?i={query}")
+    meals = response.json().get('meals', None)  # Get meals or None if not found
+
+    if meals is None:
+        meals = []  # Initialize meals as an empty list if None
+
+    # Prepare a list of meal IDs and names with their thumbnails
+    result = [{'idMeal': meal['idMeal'], 'strMeal': meal['strMeal'], 'strMealThumb': meal['strMealThumb']} for meal in meals]
+
+    # If no meals found by ingredient, search by name
+    if not result:
+        response = requests.get(f"{BASE_URL}search.php?s={query}")
+        meals_by_name = response.json().get('meals', None)
+        
+        if meals_by_name:
+            result = [{'idMeal': meal['idMeal'], 'strMeal': meal['strMeal'], 'strMealThumb': meal['strMealThumb']} for meal in meals_by_name]
+
+    return jsonify(result)
+
+@app.route('/meal/<meal_id>', methods=['GET'])
+def meal_details(meal_id):
+    response = requests.get(f"{BASE_URL}lookup.php?i={meal_id}")
     return jsonify(response.json())
 
 @app.route('/random', methods=['GET'])

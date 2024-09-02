@@ -11,9 +11,12 @@
     <div class="container">
         <h1>Recipe Finder</h1>
         <div class="search">
-            <input type="text" id="meal_name" placeholder="Enter meal name" />
+            <input type="text" id="meal_name" placeholder="Enter ingredient" />
+        </div>
+        <div class="button-container">
             <button id="search_button">Search</button>
             <button id="random_button">Random Meal</button>
+            <button id="bookmarks_button">Bookmarks</button>
         </div>
         <div id="result" class="result-container"></div>
     </div>
@@ -21,9 +24,9 @@
     <script>
         $(document).ready(function() {
             $('#search_button').click(function() {
-                const mealName = $('#meal_name').val();
-                $.post('/search', { meal_name: mealName }, function(data) {
-                    displayMeal(data);
+                const ingredient = $('#meal_name').val();
+                $.post('/search', { meal_name: ingredient }, function(data) {
+                    displayRecipes(data);
                 });
             });
 
@@ -33,12 +36,51 @@
                 });
             });
 
+            $('#bookmarks_button').click(function() {
+                displayBookmarks();
+            });
+
+            function displayRecipes(data) {
+                let html = '';
+                if (data.length > 0) {
+                    html += '<h2>Recipes Found:</h2><ul class="recipe-list">';
+                    data.forEach(meal => {
+                        html += `<li>
+                                    <a href="#" class="meal-link" data-id="${meal.idMeal}">
+                                        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="recipe-thumbnail">
+                                        ${meal.strMeal}
+                                    </a>
+                                  </li>`;
+                    });
+                    html += '</ul>';
+                } else {
+                    html = '<p class="no-meal">No recipes found for this ingredient.</p>';
+                }
+                $('#result').html(html);
+
+                // Add click event for meal links
+                $('.meal-link').click(function(e) {
+                    e.preventDefault();
+                    const mealId = $(this).data('id');
+                    fetchMealDetails(mealId);
+                });
+            }
+
+            function fetchMealDetails(mealId) {
+                $.get(`/meal/${mealId}`, function(data) {
+                    displayMeal(data);
+                });
+            }
+
             function displayMeal(data) {
                 const meal = data.meals ? data.meals[0] : null;
                 let html = '';
                 if (meal) {
                     html += `<div class="meal-card">`;
+                    html += `<div class="meal-header">`;
                     html += `<h2>${meal.strMeal}</h2>`;
+                    html += `<button class="bookmark-button" data-id="${meal.idMeal}" data-name="${meal.strMeal}" data-thumb="${meal.strMealThumb}">Bookmark</button>`;
+                    html += `</div>`;
                     html += `<img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="meal-image">`;
                     html += `<div class="meal-details">`;
                     html += `<h3>Instructions:</h3><p>${meal.strInstructions}</p>`;
@@ -46,7 +88,7 @@
                     for (let i = 1; i <= 20; i++) {
                         const ingredient = meal[`strIngredient${i}`];
                         const measure = meal[`strMeasure${i}`];
-                        if (ingredient && ingredient.trim() !== "") { // Check if ingredient is not empty
+                        if (ingredient && ingredient.trim() !== "") {
                             html += `<li>${ingredient} (${measure})</li>`;
                         }
                     }
@@ -55,6 +97,52 @@
                     html = '<p class="no-meal">No meal found.</p>';
                 }
                 $('#result').html(html);
+
+                // Add click event for bookmark button
+                $('.bookmark-button').click(function() {
+                    const mealId = $(this).data('id');
+                    const mealName = $(this).data('name');
+                    const mealThumb = $(this).data('thumb');
+                    bookmarkRecipe(mealId, mealName, mealThumb);
+                });
+            }
+
+            function bookmarkRecipe(id, name, thumb) {
+                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                const existing = bookmarks.find(meal => meal.idMeal === id);
+                if (!existing) {
+                    bookmarks.push({ idMeal: id, strMeal: name, strMealThumb: thumb });
+                    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                    alert(`${name} has been bookmarked!`);
+                } else {
+                    alert(`${name} is already in your bookmarks.`);
+                }
+            }
+
+            function displayBookmarks() {
+                const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+                let html = '<h2>Your Bookmarked Recipes:</h2><ul class="recipe-list">';
+                if (bookmarks.length > 0) {
+                    bookmarks.forEach(meal => {
+                        html += `<li>
+                                    <a href="#" class="meal-link" data-id="${meal.idMeal}">
+                                        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="recipe-thumbnail">
+                                        ${meal.strMeal}
+                                    </a>
+                                  </li>`;
+                    });
+                } else {
+                    html += '<p class="no-meal">No bookmarks found.</p>';
+                }
+                html += '</ul>';
+                $('#result').html(html);
+
+                // Add click event for meal links in bookmarks
+                $('.meal-link').click(function(e) {
+                    e.preventDefault();
+                    const mealId = $(this).data('id');
+                    fetchMealDetails(mealId);
+                });
             }
         });
     </script>
